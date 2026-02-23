@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    /* Base Options: */
+    "target": "ES2020",
+    "module": "CommonJS" /* Penting: Gunakan CommonJS agar kompatibel dengan Node.js standar */,
+    "moduleResolution": "node",
+    "esModuleInterop": true /* Penting: Membolehkan syntax 'import express' */,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+
+    /* Output */
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    /* Fix Error Anda: */
+    "verbatimModuleSyntax": false /* Matikan ini untuk menghilangkan error import */,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: projectkeep_db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rahasia
+      - POSTGRES_DB=projectkeep
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Atau "mysql" / "sqlite" sesuai database Anda
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(uuid())
+  username     String      @unique
+  password     String
+  role         String      @default("Staff") // "Admin", "Manager", "Staff"
+  
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  
+  comments     Comment[]
+  activities   ActivityLog[] // <--- RELASI KE ACTIVITY LOG
+  
+  createdAt    DateTime    @default(now())
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  users     User[]
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id           String      @id @default(uuid())
+  title        String
+  description  String?
+  status       String      @default("todo") // todo, in_progress, done
+  priority     String      @default("medium") // low, medium, high
+  
+  startDate    DateTime?
+  targetDate   DateTime?
+  dueDate      DateTime? // Tanggal penyelesaian aktual
+  
+  progress     Int         @default(0)
+  progressText String?   
+  
+  supporter    String?
+  picOtherDiv  String?   
+  milestones   String?
+  
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  
+  comments     Comment[]
+  attachments  Attachment[]
+  
+  tags         String[] 
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+  user      String   
+  
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  userRel   User?    @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  type      String   // "file" or "link"
+  
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ---> TAMBAHKAN MODEL INI <---
+model ActivityLog {
+  id          String   @id @default(uuid())
+  action      String   
+  targetName  String   
+  targetId    String?  
+  extraText   String?  
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+  
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,234 @@
+import type { Request, Response } from "express";
+import { PrismaClient, Prisma } from "@prisma/client";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+
+const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+// Extend Express Request to strictly type the decoded JWT payload
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    username: string;
+    role: string;
+  };
+}
+
+export const login = async (req: Request, res: Response): Promise<void> => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    res.status(400).json({ error: "Username dan password wajib diisi" });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: { department: true },
+    });
+
+    if (!user) {
+      // Use a generic error message to prevent username enumeration attacks
+      res.status(401).json({ error: "Kredensial tidak valid" });
+      return;
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      res.status(401).json({ error: "Kredensial tidak valid" });
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: user.id, role: user.role, username: user.username },
+      JWT_SECRET,
+      { expiresIn: "1d" },
+    );
+
+    // Issue HttpOnly cookie to mitigate XSS vulnerabilities
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: IS_PRODUCTION,
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      department: user.department,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("Login Error:", errorMessage);
+    res.status(500).json({ error: "Login failed" });
+  }
+};
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Invalidate the session on the client side
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: IS_PRODUCTION,
+      sameSite: "strict",
+    });
+    res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Logout failed" });
+  }
+};
+
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { department: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      department: user.department,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to retrieve user profile" });
+  }
+};
+
+export const getAllUsers = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const users = await prisma.user.findMany({
+      include: { department: true },
+      orderBy: { username: "asc" },
+    });
+
+    // Strip sensitive fields (like password) before sending to client
+    const safeUsers = users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      role: u.role,
+      department: u.department,
+      createdAt: u.createdAt,
+    }));
+    res.json(safeUsers);
+  } catch (error) {
+    res.status(500).json({ error: "Gagal mengambil data user" });
+  }
+};
+
+export const createUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const { username, password, role, departmentId } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        username,
+        password: hashedPassword,
+        role,
+        ...(departmentId && { department: { connect: { id: departmentId } } }),
+      },
+    });
+
+    const safeUser = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      departmentId: user.departmentId,
+      createdAt: user.createdAt,
+    };
+
+    res.json(safeUser);
+  } catch (error) {
+    // Handle specific Prisma unique constraint violation (P2002)
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      res.status(400).json({ error: "Username sudah digunakan" });
+      return;
+    }
+    res.status(400).json({ error: "Gagal membuat user" });
+  }
+};
+
+export const deleteUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const { id } = req.params;
+  try {
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    res.status(500).json({ error: "Gagal menghapus user" });
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+    res.json({ message: "Password updated" });
+  } catch (error) {
+    res.status(500).json({ error: "Gagal reset password" });
+  }
+};
+
+export const getUserActivities = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const activities = await prisma.activityLog.findMany({
+      where: { userId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+
+    res.json(activities);
+  } catch (error) {
+    console.error("Failed to fetch activities:", error);
+    res.status(500).json({ error: "Failed to fetch activities" });
+  }
+};
