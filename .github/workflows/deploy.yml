@@ -1,0 +1,21 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main # Skrip akan jalan setiap kali Anda push ke branch main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd ~/myapp/Project
+            git pull origin main
+            sudo docker-compose up -d --build
