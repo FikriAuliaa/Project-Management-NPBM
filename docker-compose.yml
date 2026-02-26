@@ -1,5 +1,7 @@
 version: "3.8"
+
 services:
+  # --- 1. DATABASE SERVICE ---
   db:
     image: postgres:14-alpine
     container_name: projectkeep_db
@@ -12,6 +14,24 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  # --- 2. APPLICATION SERVICE (BACKEND + FRONTEND) ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: projectkeep_app
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "3000:3000" # Akses aplikasi di http://localhost:3000
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Menyambungkan ke container 'db' (menggunakan nama service 'db' sebagai host)
+      - DATABASE_URL=postgresql://postgres:rahasia@db:5432/projectkeep?schema=public
+      - JWT_SECRET=super_secret_jwt_key_projectkeep_2026
 
 volumes:
   pgdata:

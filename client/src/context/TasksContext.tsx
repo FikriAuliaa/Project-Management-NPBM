@@ -67,12 +67,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: async () => {
-      // Short-circuit API call if token is evidently missing
-      if (!document.cookie.includes("token") && !localStorage.getItem("token"))
-        return [];
+      // HAPUS PENGECEKAN TOKEN MANUAL DI SINI. Biarkan Axios/Backend yang mengurusnya.
       return await api.getTasks();
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated, // Ini sudah cukup untuk mencegah query saat belum login
   });
 
   const { data: departments = [], refetch: refetchDepartmentsQuery } = useQuery<
@@ -80,8 +78,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   >({
     queryKey: ["departments"],
     queryFn: async () => {
-      if (!document.cookie.includes("token") && !localStorage.getItem("token"))
-        return [];
+      // HAPUS PENGECEKAN TOKEN MANUAL DI SINI.
       return await api.getDepartments();
     },
     enabled: isAuthenticated,

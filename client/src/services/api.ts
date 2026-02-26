@@ -8,8 +8,7 @@ import type {
 } from "../types";
 import type { User } from "../context/AuthContext";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 const apiClient = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
