@@ -8,6 +8,7 @@ import {
   deleteUser,
   resetPassword,
   getUserActivities,
+  changePassword,
 } from "../controllers/userController";
 import { verifyToken, isAdmin } from "../middleware/authMiddleware";
 
@@ -35,5 +36,6 @@ router.get("/", verifyToken, isAdmin, getAllUsers);
 router.post("/", verifyToken, isAdmin, createUser);
 router.delete("/:id", verifyToken, isAdmin, deleteUser);
 router.put("/:id/reset-password", verifyToken, isAdmin, resetPassword);
+router.put("/change-password", verifyToken, changePassword);
 
 export default router;

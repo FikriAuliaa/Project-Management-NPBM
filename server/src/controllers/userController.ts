@@ -114,6 +114,58 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Asumsi: Middleware autentikasi Anda menyimpan data user yang sedang login di req.user
+    // Sesuaikan 'req.user.id' dengan cara backend Anda membaca sesi/token saat ini!
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ error: "Sesi tidak valid, silakan login ulang." });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: "Password saat ini dan baru wajib diisi." });
+    }
+
+    // 1. Cari user di database
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User tidak ditemukan." });
+    }
+
+    // 2. Cocokkan password saat ini dengan yang ada di database
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      // Jika salah, tolak!
+      return res.status(400).json({ error: "Password saat ini salah!" });
+    }
+
+    // 3. Jika cocok, hash (enkripsi) password yang baru
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 4. Simpan password baru ke database
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.status(200).json({ message: "Password berhasil diubah!" });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res
+      .status(500)
+      .json({ error: "Terjadi kesalahan pada server saat mengubah password." });
+  }
+};
+
 export const getAllUsers = async (
   req: Request,
   res: Response,
