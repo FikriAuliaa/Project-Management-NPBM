@@ -172,7 +172,7 @@ export function UserManagementTab() {
                 onChange={(e) => setNewRole(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
               >
-                <option value="Staff">Staff (Read/Write Own Dept)</option>
+                <option value="Staff">Operator (Read/Write Own Dept)</option>
                 <option value="Manager">Manager (Global Edit)</option>
                 <option value="Admin">Admin (Full Access)</option>
               </select>
