@@ -103,13 +103,14 @@ Sistem dilengkapi dengan workflow CI/CD. Setiap perubahan pada branch main akan 
 ### Mereset database ke kondisi awal:
 ```Bash
 sudo docker exec -it projectkeep_app npx prisma migrate reset
-Membuka antarmuka GUI Prisma Studio:
 ```
+
+### Membuka antarmuka GUI Prisma Studio:
 
 ```Bash
 sudo docker exec -it projectkeep_app npx prisma studio
-Catatan: Disarankan menggunakan DBeaver atau Database Client sejenis dengan koneksi langsung ke port 5432 untuk administrasi tingkat lanjut.
 ```
+Catatan: Disarankan menggunakan DBeaver atau Database Client sejenis dengan koneksi langsung ke port 5432 untuk administrasi tingkat lanjut.
 
 ## Kredensial Default (PENTING)
 Setelah proses npx prisma db seed selesai, sistem akan membuat satu akun Administrator utama. Pengguna diwajibkan segera mengganti kata sandi default demi keamanan.
