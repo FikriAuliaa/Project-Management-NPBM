@@ -16,6 +16,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd ~/myapp/Project
+            cd ~/myapp/Project-Management-NPBM
             git pull origin main
             sudo docker-compose up -d --build
