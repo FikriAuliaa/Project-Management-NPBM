@@ -9,15 +9,13 @@ import {
   TrendingUp,
   Clock,
   CheckCircle2,
-  Users,
-  Upload, // 1. Tambahan Import icon Upload
+  Users, // Import icon Users
 } from "lucide-react";
 import { Navbar } from "../components/Navbar";
 import { SettingsPage } from "./SettingsPage";
 import { useTasks } from "../context/TasksContext";
 import { useAuth } from "../context/AuthContext";
-// 2. Tambahan useRef
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
 import { api } from "../services/api";
@@ -43,6 +41,9 @@ type HomePageProps = {
 
 type TimePeriodType = "all" | "year" | "half" | "quarter" | "month";
 
+/**
+ * Predefined set of Tailwind border color classes.
+ */
 const COLORS = [
   "border-blue-500",
   "border-purple-500",
@@ -54,6 +55,10 @@ const COLORS = [
   "border-teal-500",
 ];
 
+/**
+ * Generates a consistent color for a department based on its name using a simple string hashing algorithm.
+ * Ensures the same department always gets the same visual identifier across re-renders.
+ */
 const getBorderColorClass = (name: string) => {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -63,8 +68,13 @@ const getBorderColorClass = (name: string) => {
   return COLORS[index];
 };
 
+/**
+ * Primary Dashboard Component.
+ * Aggregates data across all departments to provide high-level metrics, charts, and navigation.
+ */
 export function HomePage({ onProfileClick, onHelpClick }: HomePageProps) {
   const navigate = useNavigate();
+  // Tarik juga isAdmin dari AuthContext
   const { isManager, isAdmin } = useAuth();
 
   const {
@@ -93,57 +103,9 @@ export function HomePage({ onProfileClick, onHelpClick }: HomePageProps) {
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // 3. State & Ref untuk fitur Import
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  // 4. Handler untuk memicu klik input file
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // 5. Handler untuk memproses file Excel yang dipilih
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file); // Pastikan key 'file' ini sesuai dengan nama field di multer backend Anda
-
-    setIsUploading(true);
-    const loadingToast = toast.loading("Mengimpor data...");
-
-    try {
-      // Menggunakan fetch bawaan browser agar tidak perlu install library tambahan
-      // Sesuaikan URL '/api/import-excel' dengan endpoint backend Anda
-      const response = await fetch("/api/import-excel", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal mengimpor data dari server");
-      }
-
-      toast.success("Data berhasil diimport!", { id: loadingToast });
-
-      // Refresh data di Dashboard secara otomatis
-      if (refreshDepartments) await refreshDepartments();
-      if (refreshTasks) await refreshTasks();
-    } catch (error) {
-      console.error("Import error:", error);
-      toast.error("Gagal mengimpor data. Pastikan format Excel sesuai.", {
-        id: loadingToast,
-      });
-    } finally {
-      setIsUploading(false);
-      // Reset input agar bisa memilih file yang sama lagi jika perlu
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
+  /**
+   * Core filtering logic to determine if a task's target date falls within the globally selected time period.
+   */
   const isDateInPeriod = useCallback(
     (dateStr: string | null | undefined): boolean => {
       if (timePeriodType === "all") return true;
@@ -183,6 +145,9 @@ export function HomePage({ onProfileClick, onHelpClick }: HomePageProps) {
     [timePeriodType, selectedYear, selectedPeriod],
   );
 
+  /**
+   * Dynamically extracts all unique years present in the dataset to populate the year filter dropdown.
+   */
   const availableYears = useMemo(() => {
     const years = new Set<number>();
     tasks.forEach((task: Task) => {
@@ -213,6 +178,10 @@ export function HomePage({ onProfileClick, onHelpClick }: HomePageProps) {
     [getAllTaskStats, isDateInPeriod],
   );
 
+  /**
+   * Computes complex analytical metrics (Overdue, High Priority, Upcoming Deadlines)
+   * against the current date to determine system health.
+   */
   const advancedStats = useMemo(() => {
     let overdueTasks = 0;
     let highPriorityTasks = 0;
@@ -427,37 +396,7 @@ export function HomePage({ onProfileClick, onHelpClick }: HomePageProps) {
             </button>
           )}
 
-          {/* Tombol Export yang sudah ada */}
           <ExportButton tasks={tasks} />
-
-          {/* 6. Admin & Manager Action: Import Data Excel */}
-          {(isManager || isAdmin) && (
-            <>
-              <button
-                onClick={handleImportClick}
-                disabled={isUploading}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all shadow-sm font-medium text-sm border ${
-                  isUploading
-                    ? "bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 cursor-not-allowed"
-                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
-                }`}
-              >
-                <Upload
-                  className={`w-4 h-4 ${isUploading ? "animate-bounce" : ""}`}
-                />
-                {isUploading ? "Mengimpor..." : "Import Excel"}
-              </button>
-
-              {/* Input File Tersembunyi */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".xlsx, .xls, .csv"
-                className="hidden"
-              />
-            </>
-          )}
 
           {/* Admin & Manager Action: Add Department */}
           {(isManager || isAdmin) && (
