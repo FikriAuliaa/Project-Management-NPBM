@@ -18,14 +18,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Attempt to hydrate theme from local storage
+    // 1. Tetap prioritaskan pilihan user jika mereka sudah pernah mengubahnya secara manual
     const savedTheme = localStorage.getItem("theme") as Theme;
     if (savedTheme) return savedTheme;
 
-    // Fallback to OS-level system preferences
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
+    // 2. Default: Selalu gunakan light mode
+    // Kita abaikan pengecekan OS (prefers-color-scheme) agar konsisten
     return "light";
   });
 
