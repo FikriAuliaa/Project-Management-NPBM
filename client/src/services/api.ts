@@ -46,7 +46,7 @@ type CreateUserInput = Omit<User, "id" | "createdAt"> & {
 
 export const api = {
   // ==========================================
-  // AUTHENTICATION
+  // AUTHENTICATION & USER SETTINGS
   // ==========================================
   login: async (username: string, password: string): Promise<LoginResponse> => {
     const response = await apiClient.post<LoginResponse>("/users/login", {
@@ -62,6 +62,18 @@ export const api = {
 
   getMe: async (): Promise<User> => {
     const response = await apiClient.get<User>("/users/me");
+    return response.data;
+  },
+
+  // 👇 INI ADALAH FUNGSI BARU YANG DITAMBAHKAN 👇
+  changePassword: async (
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> => {
+    const response = await apiClient.put("/users/change-password", {
+      currentPassword,
+      newPassword,
+    });
     return response.data;
   },
 

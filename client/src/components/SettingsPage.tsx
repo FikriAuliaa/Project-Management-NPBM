@@ -16,6 +16,8 @@ import {
   Calendar,
   Trash2,
   ShieldCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -78,7 +80,6 @@ function SystemRulesTab() {
   const [boardId, setBoardId] = useState("");
   const [managerId, setManagerId] = useState("");
 
-  // Sinkronisasi state lokal dengan data dari database saat hook selesai loading
   useEffect(() => {
     if (settings) {
       setBoardId(settings["GLOBAL_BOARD_DEPT_ID"] || "");
@@ -93,7 +94,9 @@ function SystemRulesTab() {
       await api.updateSystemSetting("GLOBAL_MANAGER_DEPT_ID", managerId);
       toast.success("System Rules berhasil diperbarui");
       refetchSettings();
-    } catch (error) {
+    } catch (err) {
+      // PERBAIKAN 1: Gunakan variabel err (console.error) agar ESLint tidak protes "unused var"
+      console.error("Gagal menyimpan rules:", err);
       toast.error("Gagal menyimpan System Rules");
     } finally {
       setIsSaving(false);
@@ -193,6 +196,14 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     return saved !== null ? saved === "true" : true;
   });
 
+  // --- PASSWORD CHANGE STATES ---
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
   const handleViewChange = (view: ViewType) => {
     setDefaultView(view);
     localStorage.setItem("pref_defaultView", view);
@@ -215,8 +226,39 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     setTimeout(() => window.location.reload(), 1000);
   };
 
-  const handleRequestPasswordReset = () => {
-    toast.success("Password reset request sent to IT Administrator.");
+  // --- PASSWORD CHANGE HANDLER ---
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error("Konfirmasi password baru tidak cocok!");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password baru minimal 6 karakter.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+
+      toast.success("Password berhasil diubah!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordForm(false);
+    } catch (err: unknown) {
+      // PERBAIKAN 2: Menggunakan err: unknown dan console.error untuk mematuhi ESLint
+      console.error("Change password error:", err);
+
+      // PERBAIKAN 3: Casting tipe aman (tanpa 'any') agar bisa membaca struktur error axios
+      const axiosError = err as { response?: { data?: { error?: string } } };
+      toast.error(
+        axiosError.response?.data?.error || "Gagal mengubah password.",
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const getDepartmentName = () => {
@@ -460,30 +502,116 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                     </div>
                   </div>
                 </section>
+
                 <section>
                   <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
                     Security
                   </h4>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600">
-                        <Lock className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600">
+                          <Lock className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-slate-900 dark:text-white text-sm">
+                            Password Management
+                          </h5>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                            Update your account password securely.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h5 className="font-bold text-slate-900 dark:text-white text-sm">
-                          Password Management
-                        </h5>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                          Request a password reset link.
-                        </p>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setShowPasswordForm(!showPasswordForm);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmPassword("");
+                        }}
+                        className={`px-4 py-2 border rounded-lg text-sm font-semibold transition-colors shadow-sm ${
+                          showPasswordForm
+                            ? "bg-slate-200 border-slate-300 text-slate-700 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {showPasswordForm ? "Cancel" : "Change Password"}
+                      </button>
                     </div>
-                    <button
-                      onClick={handleRequestPasswordReset}
-                      className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm"
-                    >
-                      Reset Password
-                    </button>
+
+                    {/* FOLD-OUT PASSWORD FORM */}
+                    {showPasswordForm && (
+                      <form
+                        onSubmit={handleChangePassword}
+                        className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200"
+                      >
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Current Password
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              value={currentPassword}
+                              onChange={(e) =>
+                                setCurrentPassword(e.target.value)
+                              }
+                              required
+                              className="w-full pl-4 pr-10 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            New Password
+                          </label>
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                          <button
+                            type="submit"
+                            disabled={isChangingPassword}
+                            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {isChangingPassword
+                              ? "Saving..."
+                              : "Save New Password"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 </section>
               </div>
